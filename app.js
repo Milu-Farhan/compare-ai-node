@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 
 import userRoute from "./routes/userRoutes.js";
+import modelsRoute from "./routes/modelsRoutes.js";
 
 const app = express();
 
@@ -9,6 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/user", userRoute);
+app.use("/api/models", modelsRoute);
 
 app.all("*", (req, res) => {
   res.status(404).json({

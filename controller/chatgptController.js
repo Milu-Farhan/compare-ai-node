@@ -48,9 +48,10 @@ const chatGptHandler = async (req, res) => {
       total_tokens: prompt_tokens.usedTokens + completion_tokens.usedTokens,
       latency,
       time_taken: `${endInstant - startInstant}`,
-      cost: prompt_tokens.usedUSD + completion_tokens.usedUSD,
+      cost: Number(prompt_tokens.usedUSD + completion_tokens.usedUSD).toFixed(
+        8
+      ),
     };
-
     const user_id = new mongoose.Types.ObjectId(req.user);
 
     const result = await History.create({

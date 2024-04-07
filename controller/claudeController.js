@@ -14,7 +14,7 @@ const claudeHandler = async (req, res) => {
 
   let starttime = Date.now();
   let latency = 0;
-
+  let timeoutId = null;
   const startInstant = performance.now();
   const stream = anthropic.messages
     .stream({
@@ -47,8 +47,11 @@ const claudeHandler = async (req, res) => {
   const output_cost = calculateCost(
     claudeModelInfo[0].output_cost[0].price,
     claudeModelInfo[0].output_cost[0].token,
-    input_tokens
+    output_tokens
   );
+
+  const total_tokens = input_tokens + output_tokens;
+  const total_cost = Number((input_cost + output_cost).toFixed(8));
 
   const data = {
     modal_name: "Claude 3 Opus",
@@ -58,8 +61,8 @@ const claudeHandler = async (req, res) => {
     time_taken: `${endInstant - startInstant}`,
     input_tokens,
     output_tokens,
-    total_tokens: input_tokens + output_tokens,
-    cost: input_cost + output_cost,
+    total_tokens,
+    cost: total_cost,
   };
 
   const user_id = new mongoose.Types.ObjectId(req.user);

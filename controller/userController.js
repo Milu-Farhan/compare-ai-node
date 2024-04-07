@@ -64,6 +64,10 @@ export const loginControl = async (req, res) => {
       success: true,
       data: {
         access_token,
+        user_details: {
+          name: result.name,
+          email: result.email,
+        },
       },
     });
   } catch (err) {

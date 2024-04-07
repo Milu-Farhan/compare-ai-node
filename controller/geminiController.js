@@ -1,17 +1,19 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import mongoose from "mongoose";
+import History from "../models/historyModel.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const handleGemini = async (req, res) => {
-  const { prompt } = req.body;
+  const { prompt, uuid } = req.body;
   const startInstant = performance.now();
   const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-  const result = await model.generateContentStream(prompt);
+  const response = await model.generateContentStream(prompt);
 
   let answer = "";
   let latency = 0;
   let starttime = Date.now();
-  for await (const chunk of result.stream) {
+  for await (const chunk of response.stream) {
     if (latency == 0) {
       latency = (Date.now() - starttime) / 1000;
     }
@@ -22,26 +24,33 @@ const handleGemini = async (req, res) => {
   const endInstant = performance.now();
 
   const prompt_tokens_response = await model.countTokens(prompt);
-  const prompt_tokens = prompt_tokens_response.totalTokens;
+  const input_tokens = prompt_tokens_response.totalTokens;
   const response_tokens_response = await model.countTokens(answer);
-  const completion_tokens = response_tokens_response.totalTokens;
-  const total_tokens = prompt_tokens + completion_tokens;
+  const output_tokens = response_tokens_response.totalTokens;
+  const total_tokens = input_tokens + output_tokens;
 
-  res.end(
-    JSON.stringify({
-      end: true,
-      model: "gemini",
-      prompt,
-      usage: {
-        prompt_tokens,
-        completion_tokens,
-        total_tokens,
-      },
-      duration: `${endInstant - startInstant}`,
-      latency,
-      cost: 0,
-    })
-  );
+  const data = {
+    modal_name: "Gemini 1.0 Pro",
+    model_key: "gemini",
+    prompt,
+    input_tokens,
+    output_tokens,
+    total_tokens,
+    latency,
+    time_taken: `${endInstant - startInstant}`,
+    cost: 0,
+  };
+
+  const user_id = new mongoose.Types.ObjectId(req.user);
+
+  const result = await History.create({
+    ...data,
+    response: answer,
+    key: uuid,
+    user: user_id,
+  });
+
+  res.end(JSON.stringify(data));
 };
 
 export default handleGemini;

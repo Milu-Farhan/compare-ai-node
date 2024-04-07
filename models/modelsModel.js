@@ -8,7 +8,6 @@ const modelsSchema = new mongoose.Schema(
     },
     RPM: {
       type: Number,
-      unique: true,
       required: true,
     },
     RPD: {

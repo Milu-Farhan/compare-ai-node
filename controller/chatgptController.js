@@ -1,5 +1,7 @@
 import OpenAI from "openai";
+import mongoose from "mongoose";
 import createGPTTokens from "../utils/calculateChatgptToken.js";
+import History from "../models/historyModel.js";
 
 const openai = new OpenAI({
   apiKey: process.env.OPEN_AI_API_KEY,
@@ -7,7 +9,7 @@ const openai = new OpenAI({
 
 const handleChatgpt = async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, uuid } = req.body;
     const startInstant = performance.now();
 
     const completion = await openai.chat.completions.create({
@@ -24,7 +26,7 @@ const handleChatgpt = async (req, res) => {
       if (latency === 0) {
         latency = (Date.now() - starttime) / 1000;
       }
-      answer += part.choices[0]?.delta.content;
+      answer += part.choices[0]?.delta.content || "";
       res.write(part.choices[0]?.delta.content || "");
     }
 
@@ -37,20 +39,28 @@ const handleChatgpt = async (req, res) => {
       answer
     );
 
-    res.end(
-      JSON.stringify({
-        model: "chatgpt",
-        prompt,
-        usage: {
-          prompt_tokens: prompt_tokens.usedTokens,
-          completion_tokens: completion_tokens.usedTokens,
-          total_tokens: prompt_tokens.usedTokens + completion_tokens.usedTokens,
-        },
-        latency,
-        duration: `${endInstant - startInstant}`,
-        cost: prompt_tokens.usedUSD + completion_tokens.usedUSD,
-      })
-    );
+    const data = {
+      modal_name: "gpt-3.5-turbo",
+      model_key: "chatgpt",
+      prompt,
+      input_tokens: prompt_tokens.usedTokens,
+      output_tokens: completion_tokens.usedTokens,
+      total_tokens: prompt_tokens.usedTokens + completion_tokens.usedTokens,
+      latency,
+      time_taken: `${endInstant - startInstant}`,
+      cost: prompt_tokens.usedUSD + completion_tokens.usedUSD,
+    };
+
+    const user_id = new mongoose.Types.ObjectId(req.user);
+
+    const result = await History.create({
+      ...data,
+      key: uuid,
+      response: answer,
+      user: user_id,
+    });
+
+    res.end(JSON.stringify(data));
   } catch (error) {
     throw error;
   }

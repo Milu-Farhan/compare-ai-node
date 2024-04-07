@@ -4,53 +4,60 @@ import History from "../models/historyModel.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-const handleGemini = async (req, res) => {
-  const { prompt, uuid } = req.body;
-  const startInstant = performance.now();
-  const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-  const response = await model.generateContentStream(prompt);
+const geminiHandler = async (req, res) => {
+  try {
+    const { prompt, uuid } = req.body;
+    const startInstant = performance.now();
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const response = await model.generateContentStream(prompt);
 
-  let answer = "";
-  let latency = 0;
-  let starttime = Date.now();
-  for await (const chunk of response.stream) {
-    if (latency == 0) {
-      latency = (Date.now() - starttime) / 1000;
+    let answer = "";
+    let latency = 0;
+    let starttime = Date.now();
+    for await (const chunk of response.stream) {
+      if (latency == 0) {
+        latency = (Date.now() - starttime) / 1000;
+      }
+      const chunkText = chunk.text();
+      res.write(chunkText);
+      answer += chunkText;
     }
-    const chunkText = chunk.text();
-    res.write(chunkText);
-    answer += chunkText;
+    const endInstant = performance.now();
+
+    const prompt_tokens_response = await model.countTokens(prompt);
+    const input_tokens = prompt_tokens_response.totalTokens;
+    const response_tokens_response = await model.countTokens(answer);
+    const output_tokens = response_tokens_response.totalTokens;
+    const total_tokens = input_tokens + output_tokens;
+
+    const data = {
+      modal_name: "Gemini 1.0 Pro",
+      model_key: "gemini",
+      prompt,
+      input_tokens,
+      output_tokens,
+      total_tokens,
+      latency,
+      time_taken: `${endInstant - startInstant}`,
+      cost: 0,
+    };
+
+    const user_id = new mongoose.Types.ObjectId(req.user);
+
+    const result = await History.create({
+      ...data,
+      response: answer,
+      key: uuid,
+      user: user_id,
+    });
+
+    res.end(JSON.stringify(data));
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error,
+    });
   }
-  const endInstant = performance.now();
-
-  const prompt_tokens_response = await model.countTokens(prompt);
-  const input_tokens = prompt_tokens_response.totalTokens;
-  const response_tokens_response = await model.countTokens(answer);
-  const output_tokens = response_tokens_response.totalTokens;
-  const total_tokens = input_tokens + output_tokens;
-
-  const data = {
-    modal_name: "Gemini 1.0 Pro",
-    model_key: "gemini",
-    prompt,
-    input_tokens,
-    output_tokens,
-    total_tokens,
-    latency,
-    time_taken: `${endInstant - startInstant}`,
-    cost: 0,
-  };
-
-  const user_id = new mongoose.Types.ObjectId(req.user);
-
-  const result = await History.create({
-    ...data,
-    response: answer,
-    key: uuid,
-    user: user_id,
-  });
-
-  res.end(JSON.stringify(data));
 };
 
-export default handleGemini;
+export default geminiHandler;

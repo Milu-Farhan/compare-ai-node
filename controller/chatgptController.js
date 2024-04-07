@@ -7,7 +7,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPEN_AI_API_KEY,
 });
 
-const handleChatgpt = async (req, res) => {
+const chatGptHandler = async (req, res) => {
   try {
     const { prompt, uuid } = req.body;
     const startInstant = performance.now();
@@ -66,4 +66,4 @@ const handleChatgpt = async (req, res) => {
   }
 };
 
-export default handleChatgpt;
+export default chatGptHandler;

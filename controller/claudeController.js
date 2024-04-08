@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import mongoose from "mongoose";
 import Models from "../models/modelsModel.js";
 import History from "../models/historyModel.js";
-import calculateCost from "../utils/calcualteCost.js";
+import calculateCost from "../utils/calculateCost.js";
 
 const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY,
@@ -14,7 +14,7 @@ const claudeHandler = async (req, res) => {
 
   let starttime = Date.now();
   let latency = 0;
-  let timeoutId = null;
+
   const startInstant = performance.now();
   const stream = anthropic.messages
     .stream({
